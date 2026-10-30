@@ -24,13 +24,13 @@ public class JwtService {
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     private final String jwtSecret;
-    private final long accessTokenExpirationMs;
+    private final long jwtExpirationMs;
 
     public JwtService(
             @Value("${app.jwt.secret}") String jwtSecret,
-            @Value("${app.jwt.access-token-expiration-ms}") long accessTokenExpirationMs) {
+            @Value("${app.jwt.expiration-ms:604800000}") long jwtExpirationMs) {
         this.jwtSecret = jwtSecret;
-        this.accessTokenExpirationMs = accessTokenExpirationMs;
+        this.jwtExpirationMs = jwtExpirationMs;
     }
 
     private SecretKey getSigningKey() {
@@ -46,16 +46,17 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
+    /**
+     * Generates a 7-day JWT token with userId and role claims.
+     */
     public String generateAccessToken(UserPrincipal userPrincipal) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + accessTokenExpirationMs);
+        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
         return Jwts.builder()
                 .subject(userPrincipal.getUsername())
                 .claim("userId", userPrincipal.getId())
                 .claim("role", userPrincipal.getRole().name())
-                .claim("tenantId", userPrincipal.getTenantId())
-                .claim("tenantSlug", userPrincipal.getTenantSlug())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -83,14 +84,6 @@ public class JwtService {
         return extractClaim(token, claims -> claims.get("userId", Long.class));
     }
 
-    public Long extractTenantId(String token) {
-        return extractClaim(token, claims -> claims.get("tenantId", Long.class));
-    }
-
-    public String extractTenantSlug(String token) {
-        return extractClaim(token, claims -> claims.get("tenantSlug", String.class));
-    }
-
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
@@ -102,9 +95,7 @@ public class JwtService {
                     .build()
                     .parseSignedClaims(token);
             return true;
-        } catch (SecurityException ex) {
-            logger.error("Invalid JWT signature: {}", ex.getMessage());
-        } catch (MalformedJwtException ex) {
+        } catch (SecurityException | MalformedJwtException ex) {
             logger.error("Invalid JWT token: {}", ex.getMessage());
         } catch (ExpiredJwtException ex) {
             logger.error("Expired JWT token: {}", ex.getMessage());

@@ -61,22 +61,19 @@ public class SecurityConfig {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.getWriter().write(
                                     "{\"timestamp\":\"" + java.time.Instant.now() + "\"," +
-                                    "\"status\":401," +
-                                    "\"message\":\"Unauthorized: Full authentication is required to access this resource\"," +
-                                    "\"path\":\"" + request.getRequestURI() + "\"}"
-                            );
-                        })
-                )
+                                            "\"status\":401," +
+                                            "\"message\":\"Unauthorized: Full authentication is required to access this resource\","
+                                            +
+                                            "\"path\":\"" + request.getRequestURI() + "\"}");
+                        }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
-                                "/api/auth/refresh",
                                 "/api/auth/logout",
-                                "/error"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                                "/error")
+                        .permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
